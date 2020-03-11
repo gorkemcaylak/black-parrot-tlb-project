@@ -5,7 +5,7 @@ module bp_tlb
  #(parameter bp_params_e bp_params_p = e_bp_inv_cfg
    `declare_bp_proc_params(bp_params_p)
    ,parameter tlb_els_p       = "inv"
-   
+
    ,localparam lg_els_lp      = `BSG_SAFE_CLOG2(tlb_els_p)
    ,localparam entry_width_lp = `bp_pte_entry_leaf_width(paddr_width_p)
  )
@@ -13,15 +13,15 @@ module bp_tlb
   , input                             reset_i
   , input                             flush_i
   , input                             translation_en_i
-  
+
   , input                             v_i
   , input                             w_i
   , input [vtag_width_p-1:0]          vtag_i
   , input [entry_width_lp-1:0]        entry_i
-    
+
   , output logic                      v_o
   , output logic [entry_width_lp-1:0] entry_o
-  
+
   , output logic                      miss_v_o
   , output logic [vtag_width_p-1:0]   miss_vtag_o
  );
@@ -31,12 +31,15 @@ bp_pte_entry_leaf_s r_entry, w_entry, passthrough_entry;
 
 logic [lg_els_lp-1:0] cam_w_addr, cam_r_addr, ram_addr;
 logic                 r_v, w_v, cam_r_v;
+logic                 gated_clk_en, gated_clk;
+
+assign gated_clk  = gated_clk_en & clk_i;
 
 assign entry_o    = translation_en_i ? r_entry : passthrough_entry;
 assign w_entry    = entry_i;
-  
-assign r_v        = v_i & ~w_i; 
-assign w_v        = v_i & w_i & translation_en_i; 
+
+assign r_v        = v_i & ~w_i;
+assign w_v        = v_i & w_i & translation_en_i;
 
 assign ram_addr   = (w_i)? cam_w_addr : cam_r_addr;
 
@@ -65,40 +68,48 @@ bsg_dff_reset #(.width_p(vtag_width_p))
    ,.data_i(vtag_i)
    ,.data_o(miss_vtag_o)
   );
-  
+
 bp_tlb_replacement #(.ways_p(dtlb_els_p))
   plru
   (.clk_i(clk_i)
    ,.reset_i(reset_i | flush_i)
-   
+
    ,.v_i(cam_r_v)
    ,.way_i(cam_r_addr)
-   
+
    ,.way_o(cam_w_addr)
-  ); 
-  
-bsg_cam_1r1w 
+  );
+
+bsg_dff_reset #(.width_p(1))
+  gated_clk_reg
+  (.clk_i(~clk_i)
+   ,.reset_i(reset_i)
+   ,.data_i(translation_en_i)
+   ,.data_o(gated_clk_en)
+  );
+
+bsg_cam_1r1w
   #(.els_p(dtlb_els_p)
     ,.width_p(vtag_width_p)
     ,.multiple_entries_p(0)
     ,.find_empty_entry_p(1)
   )
   vtag_cam
-  (.clk_i(clk_i)
+  (.clk_i(gated_clk)
    ,.reset_i(reset_i | flush_i)
-   ,.en_i(1'b1)
-   
+   ,.en_i(translation_en_i)
+
    ,.w_v_i(w_v)
    ,.w_set_not_clear_i(1'b1)
    ,.w_addr_i(cam_w_addr)
    ,.w_data_i(vtag_i)
-  
+
    ,.r_v_i(r_v)
    ,.r_data_i(vtag_i)
-   
+
    ,.r_v_o(cam_r_v)
    ,.r_addr_o(cam_r_addr)
-   
+
    ,.empty_v_o()
    ,.empty_addr_o()
   );
@@ -108,7 +119,7 @@ bsg_mem_1rw_sync
     ,.els_p(dtlb_els_p)
   )
   entry_ram
-  (.clk_i(clk_i)
+  (.clk_i(gated_clk)
    ,.reset_i(reset_i)
    ,.data_i(w_entry)
    ,.addr_i(ram_addr)
