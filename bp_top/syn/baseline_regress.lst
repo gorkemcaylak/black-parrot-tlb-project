@@ -1,6 +1,4 @@
-bs
-fibcall
-median
-rv64ui-p-blt
 towers
 vvadd
+rv64ui-v-ld
+rv64ui-v-sd
