@@ -95,7 +95,7 @@ bsg_cam_1r1w
     ,.find_empty_entry_p(1)
   )
   vtag_cam
-  (.clk_i(gated_clk)
+  (.clk_i(clk_i)
    ,.reset_i(reset_i | flush_i)
    ,.en_i(translation_en_i)
 
