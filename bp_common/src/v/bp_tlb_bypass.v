@@ -28,59 +28,46 @@ module bp_tlb
 
 `declare_bp_fe_be_if(vaddr_width_p, paddr_width_p, asid_width_p, branch_metadata_fwd_width_p);
 bp_pte_entry_leaf_s r_entry, w_entry, passthrough_entry;
-bp_pte_entry_leaf_s r_entry_n, r_entry_o;
+bp_pte_entry_leaf_s prev_r_entry, r_entry_o;
 
 logic [lg_els_lp-1:0] cam_w_addr, cam_r_addr, ram_addr;
 logic                 r_v, w_v, cam_r_v;
 logic 		                        bypass_en;
+logic [vtag_width_p-1:0]          prev_vtag;
+logic                             new_read;
 
 assign entry_o    = translation_en_i ? r_entry_o : passthrough_entry;
 assign w_entry    = entry_i;
   
-assign r_v        = v_i & ~w_i & ~bypass_en;  //& bypass_en;
+assign r_v        = v_i & ~w_i;  // & ~bypass_en;?  added this to cam valid inptu
 assign w_v        = v_i & w_i & translation_en_i;
 
 assign ram_addr   = (w_i)? cam_w_addr : cam_r_addr;
 
 assign passthrough_entry.ptag = miss_vtag_o;
 
-assign bypass_en = (miss_vtag_o == vtag_i);
-//assign bypass_en = &(miss_vtag_o ~^ vtag_i); //check if same
-
-
-bsg_dff_reset #(.width_p(entry_width_lp))  
-  r_entry_reg
-  (.clk_i(clk_i)
-   ,.reset_i(reset_i)
-   ,.data_i(r_entry)
-   ,.data_o(r_entry_n)
-  );
-
-assign r_entry_o = (miss_vtag_o == vtag_i) ? r_entry_n : r_entry;
-/*
-bsg_mux #(.width_p(entry_width_lp)
-	       ,.els_p(2)
-	       )
-  mux_r_entry
-  (.data_i({r_entry_n, r_entry}) //r_entry_n if bypass_en==1
-  ,.sel_i(~bypass_en)
-  ,.data_o(r_entry_o)
-  );
-  */
-
 bsg_dff_reset #(.width_p(1))
   r_v_reg
   (.clk_i(clk_i)
    ,.reset_i(reset_i)
-   ,.data_i(r_v & (cam_r_v | ~translation_en_i| bypass_en)) //make output valid if bypass_en == 1 (need to wait for mux output?
-   ,.data_o(v_o)
+   ,.data_i(r_v & (cam_r_v | ~translation_en_i))
+   ,.data_o(new_read)
   );
+
+assign bypass_en = ((prev_vtag == vtag_i) & translation_en_i);
+
+assign prev_r_entry = (new_read & translation_en_i) ? r_entry : prev_r_entry;
+assign prev_vtag    = (new_read & translation_en_i) ? vtag_i  : prev_vtag;
+
+assign r_entry_o = bypass_en ? prev_r_entry : r_entry;
+
+assign v_o = bypass_en ? 1 : (new_read); //r_entry_o == prev_r_entry
 
 bsg_dff_reset #(.width_p(1))
   miss_v_reg
   (.clk_i(clk_i)
    ,.reset_i(reset_i)
-   ,.data_i(r_v & ~(cam_r_v | ~translation_en_i | bypass_en)) //bypass also added here?
+   ,.data_i(r_v & ~(cam_r_v | ~translation_en_i))// | bypass_en)) //bypass also added here?
    ,.data_o(miss_v_o)
   );
 
@@ -89,9 +76,9 @@ bsg_dff_reset #(.width_p(vtag_width_p))
   (.clk_i(clk_i)
    ,.reset_i(reset_i)
    ,.data_i(vtag_i)
-   ,.data_o(miss_vtag_o) //use as old vtag for compare
+   ,.data_o(miss_vtag_o)
   );
-  
+
 bp_tlb_replacement #(.ways_p(dtlb_els_p))
   plru
   (.clk_i(clk_i)
@@ -133,15 +120,14 @@ bsg_mem_1rw_sync
   #(.width_p(entry_width_lp)
     ,.els_p(dtlb_els_p)
   )
-  entry_ram //no v_o?
+  entry_ram
   (.clk_i(clk_i)
    ,.reset_i(reset_i)
    ,.data_i(w_entry)
    ,.addr_i(ram_addr)
    ,.v_i(cam_r_v | w_v)
    ,.w_i(w_v)
-   ,.data_o(r_entry) //change back to r_entry
+   ,.data_o(r_entry)
   );
 
 endmodule
-
