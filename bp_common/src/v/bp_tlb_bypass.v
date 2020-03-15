@@ -74,10 +74,13 @@ assign bypass_en = ((prev_vtag == vtag_i) & translation_en_i);
 assign prev_r_entry = (new_read & translation_en_i) ? r_entry : prev_r_entry;
 assign prev_vtag    = (new_read & translation_en_i) ? vtag_i  : prev_vtag;
 
-assign r_entry_o = bypass_en ? prev_r_entry : r_entry;
-//assign r_entry_o = r_entry;
-assign v_o = bypass_en ? 1 : (new_read); //r_entry_o == prev_r_entry
-//assign v_o = new_read;
+assign r_entry_o = bypass_en ? prev_r_entry : r_entry;              //1
+//assign r_entry_o = r_entry;                                       //2
+assign v_o = bypass_en ? 1 : (new_read);                            //3
+//assign v_o = new_read;                                            //4
+//assign v_o = bypass_en | (~translation_en_i & r_v);               //5
+
+// make .v : 1 & 4 passes, 2 & 3 fails, 2 & 4 passes, 1 & 3 fails, 1 & 5 fails, 1 & 5_in_dff fails
 
 bsg_dff_reset #(.width_p(1))
   miss_v_reg
