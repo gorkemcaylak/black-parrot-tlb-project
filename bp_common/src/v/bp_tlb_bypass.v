@@ -54,14 +54,30 @@ bsg_dff_reset #(.width_p(1))
    ,.data_o(new_read)
   );
 
+// always_ff @(posedge clk_i) begin
+//   if(reset_i) begin: fi
+//     bypass_en <= 1'b0;
+//     prev_r_entry <= {entry_width_lp{1'b0}};
+//     prev_vtag <= {vtag_width_p{1'b0}};
+//     v_o <= 1'b0;
+//   end
+//   else begin
+//     bypass_en <= ((prev_vtag == vtag_i) & translation_en_i);
+//     prev_r_entry <= (new_read & translation_en_i) ? r_entry : prev_r_entry;
+//     prev_vtag    <= (new_read & translation_en_i) ? vtag_i  : prev_vtag;
+//     v_o <= bypass_en ? 1 : (new_read);
+//   end
+// end
+
 assign bypass_en = ((prev_vtag == vtag_i) & translation_en_i);
 
 assign prev_r_entry = (new_read & translation_en_i) ? r_entry : prev_r_entry;
 assign prev_vtag    = (new_read & translation_en_i) ? vtag_i  : prev_vtag;
 
 assign r_entry_o = bypass_en ? prev_r_entry : r_entry;
-
+//assign r_entry_o = r_entry;
 assign v_o = bypass_en ? 1 : (new_read); //r_entry_o == prev_r_entry
+//assign v_o = new_read;
 
 bsg_dff_reset #(.width_p(1))
   miss_v_reg
@@ -99,7 +115,7 @@ bsg_cam_1r1w
   vtag_cam
   (.clk_i(clk_i)
    ,.reset_i(reset_i | flush_i)
-   ,.en_i(~bypass_en)
+   ,.en_i(1'b1)//~bypass_en)
    
    ,.w_v_i(w_v)
    ,.w_set_not_clear_i(1'b1)
