@@ -1,0 +1,79 @@
+Unable to do post-synth simulations, because of problem in virtual memory tests. RTL simulation is below:
+
+towers
+==========
+[CORE0 FSH] PASS
+[CORE0 STATS]
+clk   :                16708
+instr :                12470
+fe_nop:                    0
+be_nop:                    0
+me_nop:                    0
+poison:                 3745
+roll  :                   42
+mIPC  :                  746
+
+vvadd
+==========
+[CORE0 FSH] PASS
+[CORE0 STATS]
+clk   :                 9303
+instr :                 6874
+fe_nop:                    0
+be_nop:                    0
+me_nop:                    0
+poison:                 2046
+roll  :                  240
+mIPC  :                  738
+
+multiply
+==========
+[CORE0 FSH] PASS
+[CORE0 STATS]
+clk   :                65092
+instr :                44146
+fe_nop:                    0
+be_nop:                    0
+me_nop:                    0
+poison:                15847
+roll  :                   93
+mIPC  :                  678
+
+median
+==========
+[CORE0 FSH] PASS
+[CORE0 STATS]
+clk   :                22074
+instr :                 9068
+fe_nop:                    0
+be_nop:                    0
+me_nop:                    0
+poison:                10743
+roll  :                  240
+mIPC  :                  410
+
+rv64ui-v-ld
+==========
+[CORE0 FSH] PASS
+[CORE0 STATS]
+clk   :                 9840
+instr :                 2694
+fe_nop:                    0
+be_nop:                    0
+me_nop:                    0
+poison:                 6384
+roll  :                  507
+mIPC  :                  273
+
+rv64ui-v-sd
+==========
+[CORE0 FSH] PASS
+[CORE0 STATS]
+clk   :                 9840
+instr :                 2694
+fe_nop:                    0
+be_nop:                    0
+me_nop:                    0
+poison:                 6384
+roll  :                  507
+mIPC  :                  273

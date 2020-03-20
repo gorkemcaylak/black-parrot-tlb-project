@@ -1,4 +1,3 @@
-
 module bp_tlb
   import bp_common_pkg::*;
   import bp_common_aviary_pkg::*;
@@ -31,9 +30,10 @@ bp_pte_entry_leaf_s r_entry, w_entry, passthrough_entry;
 
 logic [lg_els_lp-1:0] cam_w_addr, cam_r_addr, ram_addr;
 logic                 r_v, w_v, cam_r_v;
-logic                 gated_clk_en, gated_clk;
+logic                 ram_clk_en, ram_clk, cam_clk_en, cam_clk;
 
-assign gated_clk  = gated_clk_en & clk_i;
+assign ram_clk    = ram_clk_en & clk_i;
+assign cam_clk    = cam_clk_en & clk_i;
 
 assign entry_o    = translation_en_i ? r_entry : passthrough_entry;
 assign w_entry    = entry_i;
@@ -81,21 +81,29 @@ bp_tlb_replacement #(.ways_p(dtlb_els_p))
   );
 
 bsg_dff_reset #(.width_p(1))
-  gated_clk_reg
-  (.clk_i(~clk_i)
+  ram_clk_reg
+  (.clk_i(clk_i)
    ,.reset_i(reset_i)
-   ,.data_i(translation_en_i)
-   ,.data_o(gated_clk_en)
+   ,.data_i(cam_r_v | w_v)
+   ,.data_o(ram_clk_en)
+  );
+
+bsg_dff_reset #(.width_p(1))
+  cam_clk_reg
+  (.clk_i(clk_i)
+   ,.reset_i(reset_i)
+   ,.data_i(reset_i | flush_i | v_i | v_o)
+   ,.data_o(cam_clk_en)
   );
 
 bsg_cam_1r1w
   #(.els_p(dtlb_els_p)
     ,.width_p(vtag_width_p)
     ,.multiple_entries_p(0)
-    ,.find_empty_entry_p(1)
+    ,.find_empty_entry_p(0)
   )
   vtag_cam
-  (.clk_i(clk_i)
+  (.clk_i(cam_clk)
    ,.reset_i(reset_i | flush_i)
    ,.en_i(translation_en_i)
 
@@ -119,7 +127,7 @@ bsg_mem_1rw_sync
     ,.els_p(dtlb_els_p)
   )
   entry_ram
-  (.clk_i(gated_clk)
+  (.clk_i(ram_clk)
    ,.reset_i(reset_i)
    ,.data_i(w_entry)
    ,.addr_i(ram_addr)
